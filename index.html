@@ -27,7 +27,6 @@
             background: var(--sec-bg); border: 1px solid var(--card-border); 
             border-radius: 50%; width: 42px; height: 42px;
             display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
-            font-size: 18px;
         }
 
         .card { background: var(--sec-bg); border-radius: 16px; padding: 14px; border: 1px solid var(--card-border); }
@@ -59,8 +58,9 @@
         .preview-box { background: var(--sec-bg); border: 1px dashed var(--hint); border-radius: 12px; padding: 12px; font-family: monospace; font-size: 12px; white-space: pre-line; display: none; margin: 10px 0; border: 1px solid var(--accent); }
         .preview-box.show { display: block; }
 
-        .switch-row { display: flex; justify-content: space-between; align-items: center; }
-        .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+        /* Исправлено: тумблер идеально по центру текста */
+        .switch-row { display: flex; justify-content: space-between; align-items: center; line-height: 1; }
+        .switch { position: relative; display: inline-block; width: 40px; height: 22px; margin-left: 10px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--toggle-off); transition: .3s; border-radius: 22px; }
         .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
@@ -70,7 +70,9 @@
         .advantage-item { text-align: center; flex: 1; }
         .advantage-icon { font-size: 20px; }
         .advantage-text { font-size: 9px; font-weight: 700; color: var(--hint); text-transform: uppercase; }
-        .disclaimer { font-size: 10px; color: var(--hint); text-align: center; margin-top: 4px; line-height: 1.4; }
+        
+        .version-footer { font-size: 9px; color: var(--hint); text-align: center; margin-top: 8px; opacity: 0.5; letter-spacing: 1px; }
+        .disclaimer { font-size: 10px; color: var(--hint); text-align: center; line-height: 1.4; }
     </style>
 </head>
 <body>
@@ -100,7 +102,7 @@
     <select id="type" oninput="update()">
         <option value="Реферат">📝 Реферат</option>
         <option value="Презентация">📊 Презентация</option>
-        <option value="Доклад">🎤 Доклад</option>
+        <option value="Доклад">📑 Доклад</option>
         <option value="Проект">💡 Проект</option>
         <option value="Переписать лекцию">🖋 Переписать лекцию</option>
     </select>
@@ -122,10 +124,7 @@
 
 <div class="card">
     <label>Детали и бюджет</label>
-    <div class="input-wrapper">
-        <textarea id="details" rows="2" placeholder="Тема, оформление..." oninput="update()"></textarea>
-        <div class="inner-tip" style="top: 8px;" onclick="showTip('details')">?</div>
-    </div>
+    <textarea id="details" rows="2" placeholder="Тема, оформление..." oninput="update()"></textarea>
     <div style="margin-top:12px">
         <label>Сумма (₽)</label>
         <input type="text" id="price" placeholder="500" oninput="update()">
@@ -149,6 +148,7 @@
     💳 <b>Предоплата 100%</b> | ✅ Без антиплагиата<br>
     Работа выполняется строго по вашим деталям.
 </div>
+<div class="version-footer">BETA0.23</div>
 
 <script>
     const tg = window.Telegram.WebApp;
@@ -159,17 +159,12 @@
     document.getElementById('date').placeholder = todayStr;
 
     function showTip(f) {
-        if (f === 'deadline') {
-            tg.showAlert(`Укажите дату сдачи. Сегодня: ${todayStr}`);
-        } else {
-            tg.showAlert("Укажите тему и важные требования.");
-        }
+        if (f === 'deadline') tg.showAlert(`Укажите дату сдачи. Сегодня: ${todayStr}`);
     }
 
     function toggleTheme() {
         const isD = document.body.getAttribute('data-theme') === 'dark';
-        const newTheme = isD ? 'light' : 'dark';
-        document.body.setAttribute('data-theme', newTheme);
+        document.body.setAttribute('data-theme', isD ? 'light' : 'dark');
         document.getElementById('theme-btn').innerText = isD ? '☀️' : '🌙';
         tg.HapticFeedback.impactOccurred('light');
     }
@@ -195,45 +190,29 @@
     }
 
     function checkSubAndCopy() {
-        tg.showConfirm("Вы подписаны на наш канал? Это обязательно для заказа.", (ok) => {
-            if (ok) {
-                copy();
-            } else {
-                tg.showPopup({
-                    title: "Подписка",
-                    message: "Сначала подпишитесь на основной канал с новостями.",
-                    buttons: [{type: 'default', text: 'В канал', id: 'go'}]
-                }, (b) => {
-                    if (b === 'go') tg.openTelegramLink('https://t.me/txtandpptx');
-                });
-            }
+        tg.showConfirm("Вы подписаны на канал? Это обязательно.", (ok) => {
+            if (ok) copy();
+            else tg.openTelegramLink('https://t.me/txtandpptx');
         });
     }
 
     async function copy() {
         const c = document.getElementById('count').value, p = document.getElementById('price').value;
-        if (!c || !p) { 
-            tg.showAlert("Заполните количество и цену!"); 
-            return; 
-        }
-        
+        if (!c || !p) { tg.showAlert("Заполните поля!"); return; }
         const text = document.getElementById('preview').innerText;
         try {
             await navigator.clipboard.writeText(text);
             tg.HapticFeedback.notificationOccurred('success');
-            tg.showConfirm("Анкета скопирована! Отправить заказ @awarem?", (ok) => {
+            tg.showConfirm("Скопировано! Отправить @awarem?", (ok) => {
                 if (ok) tg.openTelegramLink("https://t.me/awarem");
             });
-        } catch (e) {
-            tg.showAlert("Скопируйте текст вручную.");
-        }
+        } catch (e) { tg.showAlert("Ошибка копирования."); }
     }
 
     function clearAll() {
-        if(confirm("Очистить все поля?")) {
+        if(confirm("Очистить?")) {
             document.querySelectorAll('input, textarea').forEach(el => el.value = '');
-            document.getElementById('urgent').checked = false; 
-            update();
+            document.getElementById('urgent').checked = false; update();
         }
     }
 
